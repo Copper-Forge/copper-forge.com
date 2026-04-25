@@ -5,89 +5,108 @@
   },
   navigation: [
     { label: "Services", href: "#services" },
-    { label: "Work", href: "#work" },
+    { label: "Process", href: "#process" },
     { label: "About", href: "#about" },
     { label: "Contact", href: "#contact" },
   ],
   hero: {
-    eyebrow: "Precision Delivery for Complex Software Systems",
-    title: "Engineering strategy and execution that move your roadmap forward.",
+    eyebrow: "Technical Consulting for Ambitious Ideas",
+    title: "Bring the idea. We deliver the technical reality.",
     description:
-      "Copper Forge partners with product and platform teams to turn high-risk initiatives into dependable outcomes. We design practical architecture, remove delivery bottlenecks, and ship resilient software with your team.",
-    primaryCta: { label: "Start a Conversation", href: "#contact" },
-    secondaryCta: { label: "View Engagement Model", href: "#services" },
+      "Copper Forge helps founders and operators turn strong ideas into working systems. We bring experienced technical leadership, disciplined execution, and a delivery model built around outcomes.",
+    primaryCta: { label: "Send Your Brief", href: "#contact" },
+    secondaryCta: { label: "How We Work", href: "#process" },
     highlights: [
-      "Principal-level technical leadership",
-      "Hands-on implementation with your team",
-      "Reliable delivery under real constraints",
+      "Senior experts from discovery through delivery",
+      "No hourly billing and no hidden overrun risk",
+      "Flexible deal structures for select projects",
     ],
   },
+  valueProps: [
+    {
+      title: "Flexible Finances",
+      description:
+        "For select projects we believe in, we can structure deferred compensation or equity-based agreements.",
+    },
+    {
+      title: "Top Tier Talent",
+      description:
+        "From discovery to delivery, you work with senior experts only. Every team member brings 20+ years of experience in their field.",
+    },
+    {
+      title: "Always On Budget",
+      description:
+        "We do not bill hourly. Pricing is fixed to milestones and only changes when scope changes.",
+    },
+    {
+      title: "Consulting Like It Should Be",
+      description:
+        "If your project excites our team, we will work with you to find a practical path forward.",
+    },
+  ],
   services: {
     title: "Core Services",
     intro:
-      "Focused consulting engagements built to solve immediate engineering problems while strengthening long-term capability.",
+      "Focused consulting engagements designed to turn ideas into reliable, production-ready outcomes.",
     items: [
       {
-        name: "Architecture and Technical Direction",
+        name: "Modernization",
         description:
-          "Define system boundaries, integration strategies, and delivery roadmaps for high-impact platform and product work.",
+          "Upgrade aging systems, reduce technical friction, and improve reliability without stalling delivery.",
       },
       {
-        name: "Delivery Acceleration",
+        name: "Technical Strategy",
         description:
-          "Stabilize execution by improving planning, reducing technical drag, and unblocking teams across product and infrastructure.",
+          "Translate business goals into a clear technical direction, phased roadmap, and execution plan.",
       },
       {
-        name: "Modernization and Reliability",
+        name: "Error Elimination",
         description:
-          "Upgrade legacy systems, improve operational confidence, and establish sustainable engineering patterns.",
+          "Identify root causes, remove recurring failure points, and ship with stronger production confidence.",
       },
     ],
   },
-  proof: {
-    title: "Selected Impact",
+  process: {
+    title: "How We Work",
     intro:
-      "Representative outcomes from consulting partnerships across product, platform, and operations.",
-    metrics: [
-      { value: "35%", label: "Cycle-time reduction on core delivery stream" },
-      { value: "99.95%", label: "Service availability after reliability overhaul" },
-      { value: "4x", label: "Increase in release cadence for critical workflows" },
+      "A disciplined, collaborative process that keeps scope, delivery, and expectations aligned from day one.",
+    steps: [
+      "Collaborative requirements investigation",
+      "Technical plan creation",
+      "Pricing and milestone agreement",
+      "Build and implementation",
+      "Customer acceptance",
+      "Payout by agreed milestones",
     ],
-    cases: [
+  },
+  engagement: {
+    title: "Engagement Snapshot",
+    items: [
+      { label: "Typical engagement", value: "3 months" },
+      { label: "Typical team", value: "3 senior specialists" },
       {
-        name: "Platform Migration",
-        description:
-          "Led a phased migration strategy that reduced release risk while preserving delivery velocity for customer-facing teams.",
-      },
-      {
-        name: "Incident Recovery Program",
-        description:
-          "Implemented reliability guardrails, observability standards, and runbook discipline to restore operational confidence.",
-      },
-      {
-        name: "Product Launch Enablement",
-        description:
-          "Embedded with engineering leadership to shape architecture and execution for an on-time multi-team product launch.",
+        label: "Best fit",
+        value: "Projects aimed at delivering solutions that make the world a better place.",
       },
     ],
   },
   about: {
-    title: "Built for Critical Initiatives",
+    title: "Experienced. Creative. Disciplined.",
     paragraphs: [
-      "Copper Forge is designed for teams tackling technically difficult programs with real business pressure. Engagements are pragmatic, direct, and outcome-driven.",
-      "We work as a force multiplier for your existing engineering organization: aligning technical decisions to business priorities and delivering implementation that holds up in production.",
+      "Copper Forge is a technical consulting firm for teams with strong ideas and meaningful goals.",
+      "We focus on practical strategy, high-quality implementation, and accountable delivery.",
     ],
   },
   contact: {
-    title: "Start the Conversation",
+    title: "Start with a Brief",
     intro:
-      "Tell us what you are building, where the current friction is, and how you prefer to connect. We will follow up promptly.",
-    submitLabel: "Send Inquiry",
+      "Send your brief and tell us whether you prefer email or a callback. We respond within one business day.",
+    submitLabel: "Send Brief",
     successMessage:
-      "Thanks, your message has been received. We will reach out shortly.",
+      "Thanks, your brief has been received. We will follow up within one business day.",
   },
   footer: {
-    note: "Copper Forge Technical Consulting",
+    note: "Copyright © 2026 Copper Forge, LLC.",
     privacyHref: "/privacy",
     privacyLabel: "Privacy",
   },

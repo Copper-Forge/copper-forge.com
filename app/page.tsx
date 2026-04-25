@@ -39,7 +39,7 @@ export default function Home() {
             href="#contact"
             className="rounded-full border border-copper-700 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-copper-200 transition hover:border-copper-500 hover:bg-copper-600/10"
           >
-            Contact
+            Send Brief
           </a>
         </div>
       </header>
@@ -84,14 +84,17 @@ export default function Home() {
             <p className="font-heading text-xs uppercase tracking-[0.25em] text-copper-accent-400">
               Why Teams Choose Copper Forge
             </p>
-            <div className="mt-5 space-y-5">
-              {siteContent.proof.metrics.map((metric) => (
-                <div key={metric.label} className="rounded-2xl border border-charcoal-700 bg-charcoal-850 px-5 py-4">
-                  <p className="font-heading text-3xl uppercase tracking-[0.08em] text-copper-300">
-                    {metric.value}
-                  </p>
-                  <p className="mt-1 text-sm text-steel-300">{metric.label}</p>
-                </div>
+            <div className="mt-5 space-y-4">
+              {siteContent.valueProps.map((item) => (
+                <article
+                  key={item.title}
+                  className="rounded-2xl border border-charcoal-700 bg-charcoal-850 px-5 py-4"
+                >
+                  <h3 className="font-heading text-lg uppercase tracking-[0.08em] text-copper-300">
+                    {item.title}
+                  </h3>
+                  <p className="mt-2 text-sm text-steel-300">{item.description}</p>
+                </article>
               ))}
             </div>
           </aside>
@@ -117,19 +120,39 @@ export default function Home() {
           </div>
         </Section>
 
-        <Section id="work" title={siteContent.proof.title} intro={siteContent.proof.intro}>
-          <div className="grid gap-5 md:grid-cols-3">
-            {siteContent.proof.cases.map((item) => (
-              <article
-                key={item.name}
-                className="rounded-2xl border border-charcoal-800 bg-gradient-to-b from-charcoal-900 to-charcoal-900/40 p-6"
+        <Section
+          id="process"
+          title={siteContent.process.title}
+          intro={siteContent.process.intro}
+        >
+          <ol className="grid gap-4 md:grid-cols-2">
+            {siteContent.process.steps.map((step, index) => (
+              <li
+                key={step}
+                className="rounded-2xl border border-charcoal-800 bg-gradient-to-b from-charcoal-900 to-charcoal-900/40 px-5 py-4"
               >
-                <h3 className="font-heading text-xl uppercase tracking-[0.08em] text-copper-accent-300">
-                  {item.name}
-                </h3>
-                <p className="mt-3 text-steel-300">{item.description}</p>
-              </article>
+                <p className="font-heading text-xs uppercase tracking-[0.2em] text-copper-accent-400">
+                  Step {index + 1}
+                </p>
+                <p className="mt-2 text-lg text-steel-300">{step}</p>
+              </li>
             ))}
+          </ol>
+
+          <div className="mt-8 rounded-2xl border border-charcoal-800 bg-charcoal-900/60 p-6">
+            <h3 className="font-heading text-xl uppercase tracking-[0.08em] text-copper-200">
+              {siteContent.engagement.title}
+            </h3>
+            <div className="mt-5 grid gap-4 sm:grid-cols-3">
+              {siteContent.engagement.items.map((item) => (
+                <div key={item.label} className="rounded-xl border border-charcoal-700 bg-charcoal-850 p-4">
+                  <p className="font-heading text-xs uppercase tracking-[0.2em] text-copper-accent-400">
+                    {item.label}
+                  </p>
+                  <p className="mt-2 text-steel-300">{item.value}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </Section>
 
