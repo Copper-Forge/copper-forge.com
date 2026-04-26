@@ -1,5 +1,10 @@
-﻿import { NextResponse, type NextRequest } from "next/server";
-import { Resend } from "resend";
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+
+import { NextResponse, type NextRequest } from "next/server";
+import { RecaptchaEnterpriseServiceClient } from "@google-cloud/recaptcha-enterprise";
+import nodemailer from "nodemailer";
 
 import {
   type ContactRequest,
@@ -7,10 +12,13 @@ import {
   contactRequestSchema,
   mapZodFieldErrors,
 } from "@/lib/contact";
+import { RECAPTCHA_ACTION } from "@/lib/recaptcha";
 
-type HCaptchaResponse = {
-  success: boolean;
-};
+export const runtime = "nodejs";
+
+let recaptchaClient: RecaptchaEnterpriseServiceClient | null = null;
+let recaptchaClientProjectId: string | null = null;
+let warnedMissingCredentials = false;
 
 export async function POST(request: NextRequest) {
   let json: unknown;
@@ -43,19 +51,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const captchaSecret = process.env.HCAPTCHA_SECRET;
+  const recaptchaProjectId = process.env.RECAPTCHA_PROJECT_ID;
+  const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
 
-  if (!captchaSecret) {
+  if (!recaptchaProjectId || !recaptchaSiteKey) {
     return NextResponse.json<ContactResponse>(
       { ok: false, code: "CAPTCHA_FAILED" },
       { status: 500 },
     );
   }
 
-  const captchaPass = await verifyHCaptcha({
-    secret: captchaSecret,
+  const captchaPass = await verifyReCaptcha({
+    projectId: recaptchaProjectId,
+    siteKey: recaptchaSiteKey,
     token: parsed.data.captchaToken,
+    expectedAction: RECAPTCHA_ACTION,
     remoteIp: request.headers.get("x-forwarded-for") ?? undefined,
+    userAgent: request.headers.get("user-agent") ?? undefined,
   });
 
   if (!captchaPass) {
@@ -65,25 +77,45 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const resendApiKey = process.env.RESEND_API_KEY;
   const toEmail = process.env.CONTACT_TO_EMAIL;
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpPortRaw = process.env.SMTP_PORT;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  const smtpPort = Number.parseInt(smtpPortRaw ?? "587", 10);
+  const smtpSecure =
+    process.env.SMTP_SECURE === "true" || (!process.env.SMTP_SECURE && smtpPort === 465);
+  const fromEmail = process.env.CONTACT_FROM_EMAIL ?? smtpUser;
+  const smtpPortIsValid = Number.isInteger(smtpPort) && smtpPort > 0 && smtpPort <= 65535;
 
-  if (!resendApiKey || !toEmail) {
+  if (
+    !toEmail ||
+    !fromEmail ||
+    !smtpHost ||
+    !smtpUser ||
+    !smtpPass ||
+    !smtpPortIsValid
+  ) {
     return NextResponse.json<ContactResponse>(
       { ok: false, code: "DELIVERY_FAILED" },
       { status: 500 },
     );
   }
 
-  const resend = new Resend(resendApiKey);
-
   try {
-    const fromEmail =
-      process.env.CONTACT_FROM_EMAIL ?? "Copper Forge <onboarding@resend.dev>";
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+    });
 
-    await resend.emails.send({
+    await transporter.sendMail({
       from: fromEmail,
-      to: [toEmail],
+      to: toEmail,
       replyTo: parsed.data.email,
       subject: `New Copper Forge inquiry from ${parsed.data.name}`,
       text: formatTextEmail(parsed.data),
@@ -98,43 +130,96 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function verifyHCaptcha({
-  secret,
+async function verifyReCaptcha({
+  projectId,
+  siteKey,
   token,
+  expectedAction,
   remoteIp,
+  userAgent,
 }: {
-  secret: string;
+  projectId: string;
+  siteKey: string;
   token: string;
+  expectedAction: string;
   remoteIp?: string;
+  userAgent?: string;
 }) {
-  const body = new URLSearchParams({
-    secret,
-    response: token,
-  });
-
-  if (remoteIp) {
-    body.append("remoteip", remoteIp.split(",")[0]?.trim() ?? remoteIp);
-  }
-
   try {
-    const response = await fetch("https://hcaptcha.com/siteverify", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: body.toString(),
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
+    if (!hasDefaultGoogleCredentials()) {
+      warnMissingGoogleCredentialsOnce();
       return false;
     }
 
-    const result = (await response.json()) as HCaptchaResponse;
-    return Boolean(result.success);
+    const client = getRecaptchaClient(projectId);
+
+    const [response] = await client.createAssessment({
+      parent: client.projectPath(projectId),
+      assessment: {
+        event: {
+          token,
+          siteKey,
+          userIpAddress: normalizeForwardedIp(remoteIp),
+          userAgent,
+        },
+      },
+    });
+
+    if (!response.tokenProperties?.valid) {
+      return false;
+    }
+
+    return response.tokenProperties.action === expectedAction;
   } catch {
     return false;
   }
+}
+
+function hasDefaultGoogleCredentials() {
+  const configuredPath = process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim();
+
+  if (configuredPath) {
+    return existsSync(configuredPath);
+  }
+
+  const windowsAdcPath = process.env.APPDATA
+    ? join(process.env.APPDATA, "gcloud", "application_default_credentials.json")
+    : "";
+
+  if (windowsAdcPath && existsSync(windowsAdcPath)) {
+    return true;
+  }
+
+  const unixAdcPath = join(homedir(), ".config", "gcloud", "application_default_credentials.json");
+  return existsSync(unixAdcPath);
+}
+
+function warnMissingGoogleCredentialsOnce() {
+  if (warnedMissingCredentials) {
+    return;
+  }
+
+  warnedMissingCredentials = true;
+  console.warn(
+    "reCAPTCHA Enterprise credentials are missing. Configure ADC with `gcloud auth application-default login` or set GOOGLE_APPLICATION_CREDENTIALS.",
+  );
+}
+
+function getRecaptchaClient(projectId: string) {
+  if (!recaptchaClient || recaptchaClientProjectId !== projectId) {
+    recaptchaClient = new RecaptchaEnterpriseServiceClient({ projectId });
+    recaptchaClientProjectId = projectId;
+  }
+
+  return recaptchaClient;
+}
+
+function normalizeForwardedIp(remoteIp?: string) {
+  if (!remoteIp) {
+    return undefined;
+  }
+
+  return remoteIp.split(",")[0]?.trim() ?? remoteIp;
 }
 
 function formatTextEmail(payload: Omit<ContactRequest, "captchaToken">) {
@@ -142,7 +227,7 @@ function formatTextEmail(payload: Omit<ContactRequest, "captchaToken">) {
     "New inquiry from copper-forge.com",
     "",
     `Name: ${payload.name}`,
-    `Company: ${payload.companyName}`,
+    `Company: ${payload.companyName || "Not provided"}`,
     `Email: ${payload.email}`,
     `Phone: ${payload.phone || "Not provided"}`,
     `Preferred contact: ${payload.contactPreference}`,

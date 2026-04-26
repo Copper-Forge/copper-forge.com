@@ -1,7 +1,7 @@
-﻿"use client";
+"use client";
 
-import HCaptcha from "@hcaptcha/react-hcaptcha";
-import { useMemo, useRef, useState } from "react";
+import Script from "next/script";
+import { useCallback, useMemo, useState } from "react";
 
 import {
   type ContactRequest,
@@ -9,11 +9,24 @@ import {
   contactRequestSchema,
   mapZodFieldErrors,
 } from "@/lib/contact";
+import { RECAPTCHA_ACTION } from "@/lib/recaptcha";
 
 type ContactFormProps = {
   submitLabel: string;
   successMessage: string;
 };
+
+type ReCaptchaEnterpriseApi = {
+  execute: (sitekey: string, action: { action: string }) => Promise<string>;
+};
+
+declare global {
+  interface Window {
+    grecaptcha?: {
+      enterprise?: ReCaptchaEnterpriseApi;
+    };
+  }
+}
 
 type FormValues = Omit<ContactRequest, "captchaToken">;
 
@@ -30,17 +43,15 @@ export function ContactForm({
   submitLabel,
   successMessage,
 }: ContactFormProps) {
-  const captchaRef = useRef<HCaptcha | null>(null);
-
   const [values, setValues] = useState<FormValues>(initialValues);
-  const [captchaToken, setCaptchaToken] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">(
     "idle",
   );
   const [formMessage, setFormMessage] = useState<string>("");
+  const [isRecaptchaReady, setIsRecaptchaReady] = useState(false);
 
-  const siteKey = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY ?? "";
+  const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? "";
   const captchaEnabled = useMemo(() => siteKey.trim().length > 0, [siteKey]);
 
   const updateField = (field: keyof FormValues, value: string) => {
@@ -58,16 +69,53 @@ export function ContactForm({
 
   const resetForm = () => {
     setValues(initialValues);
-    setCaptchaToken("");
     setFieldErrors({});
-    captchaRef.current?.resetCaptcha();
   };
+
+  const requestCaptchaToken = useCallback(async () => {
+    const grecaptchaEnterprise = window.grecaptcha?.enterprise;
+
+    if (!grecaptchaEnterprise?.execute) {
+      return null;
+    }
+
+    try {
+      const token = await grecaptchaEnterprise.execute(siteKey, {
+        action: RECAPTCHA_ACTION,
+      });
+      return token?.trim() || null;
+    } catch {
+      return null;
+    }
+  }, [siteKey]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     setStatus("idle");
     setFormMessage("");
+
+    if (!captchaEnabled || !isRecaptchaReady) {
+      setStatus("error");
+      setFieldErrors((current) => ({
+        ...current,
+        captchaToken: "Captcha is not ready. Refresh and try again.",
+      }));
+      setFormMessage("Captcha is not ready. Refresh and try again.");
+      return;
+    }
+
+    const captchaToken = await requestCaptchaToken();
+
+    if (!captchaToken) {
+      setStatus("error");
+      setFieldErrors((current) => ({
+        ...current,
+        captchaToken: "Verification failed. Please try again.",
+      }));
+      setFormMessage("Verification failed. Please try again.");
+      return;
+    }
 
     const payload: ContactRequest = {
       ...values,
@@ -106,7 +154,7 @@ export function ContactForm({
             ...current,
             captchaToken: "Verification failed. Please try again.",
           }));
-          setFormMessage("Verification failed. Please retry the captcha challenge.");
+          setFormMessage("Verification failed. Please retry your submission.");
         } else {
           setFormMessage(
             "We could not deliver your message right now. Please try again shortly.",
@@ -114,8 +162,6 @@ export function ContactForm({
         }
 
         setStatus("error");
-        captchaRef.current?.resetCaptcha();
-        setCaptchaToken("");
         return;
       }
 
@@ -124,8 +170,6 @@ export function ContactForm({
         setFormMessage(
           "We could not deliver your message right now. Please try again shortly.",
         );
-        captchaRef.current?.resetCaptcha();
-        setCaptchaToken("");
         return;
       }
 
@@ -152,7 +196,7 @@ export function ContactForm({
         />
         <TextField
           id="companyName"
-          label="Company Name"
+          label="Company Name (Optional)"
           value={values.companyName}
           error={fieldErrors.companyName}
           onChange={(value) => updateField("companyName", value)}
@@ -222,28 +266,28 @@ export function ContactForm({
 
       <div className="rounded-2xl border border-charcoal-700 bg-charcoal-900/70 p-4">
         {captchaEnabled ? (
-          <HCaptcha
-            ref={captchaRef}
-            sitekey={siteKey}
-            theme="dark"
-            onVerify={(token) => {
-              setCaptchaToken(token);
-              setFieldErrors((current) => {
-                if (!current.captchaToken) {
-                  return current;
-                }
-
-                const next = { ...current };
-                delete next.captchaToken;
-                return next;
-              });
-            }}
-            onExpire={() => setCaptchaToken("")}
-            onError={() => setCaptchaToken("")}
-          />
+          <>
+            <Script
+              id="google-recaptcha-enterprise"
+              src={`https://www.google.com/recaptcha/enterprise.js?render=${encodeURIComponent(siteKey)}`}
+              strategy="afterInteractive"
+              onReady={() => setIsRecaptchaReady(true)}
+              onError={() => {
+                setFieldErrors((current) => ({
+                  ...current,
+                  captchaToken: "Captcha failed to load. Refresh and try again.",
+                }));
+                setStatus("error");
+                setFormMessage("Captcha failed to load. Refresh and try again.");
+              }}
+            />
+            <p className="text-sm text-steel-300">
+              Protected by reCAPTCHA Enterprise.
+            </p>
+          </>
         ) : (
           <p className="text-sm text-copper-accent-400">
-            Captcha is not configured. Set NEXT_PUBLIC_HCAPTCHA_SITE_KEY to enable
+            Captcha is not configured. Set NEXT_PUBLIC_RECAPTCHA_SITE_KEY to enable
             submissions.
           </p>
         )}
@@ -257,7 +301,7 @@ export function ContactForm({
       <div className="flex items-center gap-4">
         <button
           type="submit"
-          disabled={status === "submitting" || !captchaEnabled}
+          disabled={status === "submitting" || !captchaEnabled || !isRecaptchaReady}
           className="inline-flex items-center justify-center rounded-full bg-copper-500 px-7 py-3 font-heading text-base uppercase tracking-wider text-charcoal-950 transition hover:bg-copper-accent-500 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {status === "submitting" ? "Sending..." : submitLabel}

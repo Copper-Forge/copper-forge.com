@@ -15,9 +15,9 @@ export default function Home() {
             <Image
               src="/copper_forge_logo.png"
               alt="Copper Forge"
-              width={180}
-              height={56}
-              className="h-auto w-36 sm:w-44"
+              width={176}
+              height={55}
+              style={{ width: "auto", height: "auto" }}
               priority
             />
           </a>

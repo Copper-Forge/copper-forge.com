@@ -7,8 +7,8 @@ Single-page marketing site built with Next.js App Router, TypeScript, and Tailwi
 - Next.js 16 (App Router)
 - TypeScript
 - Tailwind CSS v4
-- Resend (contact email delivery)
-- hCaptcha (bot protection)
+- SMTP (contact email delivery; works with Purelymail)
+- Google reCAPTCHA Enterprise (bot protection)
 
 ## Local Development
 
@@ -23,11 +23,17 @@ Open `http://localhost:3000`.
 
 Copy `.env.example` to `.env.local` and configure:
 
-- `RESEND_API_KEY`
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_SECURE` (`true` or `false`)
+- `SMTP_USER`
+- `SMTP_PASS`
 - `CONTACT_TO_EMAIL`
-- `HCAPTCHA_SECRET`
-- `NEXT_PUBLIC_HCAPTCHA_SITE_KEY`
-- `CONTACT_FROM_EMAIL` (optional)
+- `RECAPTCHA_PROJECT_ID`
+- `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`
+- `CONTACT_FROM_EMAIL` (optional, defaults to `SMTP_USER`)
+
+reCAPTCHA Enterprise authentication uses Google Application Default Credentials.
 
 ## Quality Checks
 

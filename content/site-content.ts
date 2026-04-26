@@ -24,11 +24,6 @@
   },
   valueProps: [
     {
-      title: "Flexible Finances",
-      description:
-        "For select projects we believe in, we can structure deferred compensation or equity-based agreements.",
-    },
-    {
       title: "Top Tier Talent",
       description:
         "From discovery to delivery, you work with senior experts only. Every team member brings 20+ years of experience in their field.",
@@ -42,6 +37,11 @@
       title: "Consulting Like It Should Be",
       description:
         "If your project excites our team, we will work with you to find a practical path forward.",
+    },
+    {
+      title: "Flexible Finances",
+      description:
+        "For select projects we believe in, we can structure deferred compensation or equity-based agreements.",
     },
   ],
   services: {

@@ -8,7 +8,6 @@ export const contactRequestSchema = z
     companyName: z
       .string()
       .trim()
-      .min(1, "Company name is required.")
       .max(120, "Company name is too long."),
     email: z
       .string()
