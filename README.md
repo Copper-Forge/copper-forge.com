@@ -8,7 +8,7 @@ Single-page marketing site built with Next.js App Router, TypeScript, and Tailwi
 - TypeScript
 - Tailwind CSS v4
 - SMTP (contact email delivery; works with Purelymail)
-- Google reCAPTCHA Enterprise (bot protection)
+- Cloudflare Turnstile + honeypot field (bot protection)
 
 ## Local Development
 
@@ -29,11 +29,9 @@ Copy `.env.example` to `.env.local` and configure:
 - `SMTP_USER`
 - `SMTP_PASS`
 - `CONTACT_TO_EMAIL`
-- `RECAPTCHA_PROJECT_ID`
-- `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`
+- `TURNSTILE_SECRET_KEY`
+- `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
 - `CONTACT_FROM_EMAIL` (optional, defaults to `SMTP_USER`)
-
-reCAPTCHA Enterprise authentication uses Google Application Default Credentials.
 
 ## Quality Checks
 

@@ -21,10 +21,11 @@ export const contactRequestSchema = z
       .trim()
       .min(1, "Message is required.")
       .max(3000, "Message is too long."),
-    captchaToken: z
+    turnstileToken: z
       .string()
       .trim()
       .min(1, "Complete verification before submitting."),
+    honeypot: z.string().trim().max(200, "Invalid submission.").optional(),
   })
   .superRefine((value, ctx) => {
     if (value.contactPreference === "phone" && !value.phone?.trim()) {

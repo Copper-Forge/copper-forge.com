@@ -1,9 +1,4 @@
-import { existsSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
-
 import { NextResponse, type NextRequest } from "next/server";
-import { RecaptchaEnterpriseServiceClient } from "@google-cloud/recaptcha-enterprise";
 import nodemailer from "nodemailer";
 
 import {
@@ -12,17 +7,10 @@ import {
   contactRequestSchema,
   mapZodFieldErrors,
 } from "@/lib/contact";
-import { RECAPTCHA_ACTION } from "@/lib/recaptcha";
 
 export const runtime = "nodejs";
 
-let recaptchaClient: RecaptchaEnterpriseServiceClient | null = null;
-let recaptchaClientProjectId: string | null = null;
-let warnedMissingCredentials = false;
-let parsedCredentialsFromEnv:
-  | { client_email: string; private_key: string; project_id?: string }
-  | null
-  | undefined = undefined;
+const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
 export async function POST(request: NextRequest) {
   let json: unknown;
@@ -55,23 +43,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const recaptchaProjectId = process.env.RECAPTCHA_PROJECT_ID;
-  const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+  if (parsed.data.honeypot?.trim()) {
+    return NextResponse.json<ContactResponse>({ ok: true });
+  }
 
-  if (!recaptchaProjectId || !recaptchaSiteKey) {
+  const turnstileSecretKey = process.env.TURNSTILE_SECRET_KEY;
+
+  if (!turnstileSecretKey) {
     return NextResponse.json<ContactResponse>(
       { ok: false, code: "CAPTCHA_FAILED" },
       { status: 500 },
     );
   }
 
-  const captchaPass = await verifyReCaptcha({
-    projectId: recaptchaProjectId,
-    siteKey: recaptchaSiteKey,
-    token: parsed.data.captchaToken,
-    expectedAction: RECAPTCHA_ACTION,
+  const captchaPass = await verifyTurnstile({
+    secretKey: turnstileSecretKey,
+    token: parsed.data.turnstileToken,
     remoteIp: request.headers.get("x-forwarded-for") ?? undefined,
-    userAgent: request.headers.get("user-agent") ?? undefined,
   });
 
   if (!captchaPass) {
@@ -134,141 +122,49 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function verifyReCaptcha({
-  projectId,
-  siteKey,
+async function verifyTurnstile({
+  secretKey,
   token,
-  expectedAction,
   remoteIp,
-  userAgent,
 }: {
-  projectId: string;
-  siteKey: string;
+  secretKey: string;
   token: string;
-  expectedAction: string;
   remoteIp?: string;
-  userAgent?: string;
 }) {
   try {
-    if (!hasDefaultGoogleCredentials()) {
-      warnMissingGoogleCredentialsOnce();
-      return false;
-    }
-
-    const client = getRecaptchaClient(projectId);
-
-    const [response] = await client.createAssessment({
-      parent: client.projectPath(projectId),
-      assessment: {
-        event: {
-          token,
-          siteKey,
-          userIpAddress: normalizeForwardedIp(remoteIp),
-          userAgent,
-        },
-      },
+    const body = new URLSearchParams({
+      secret: secretKey,
+      response: token,
     });
 
-    if (!response.tokenProperties?.valid) {
+    const normalizedIp = normalizeForwardedIp(remoteIp);
+
+    if (normalizedIp) {
+      body.set("remoteip", normalizedIp);
+    }
+
+    const response = await fetch(TURNSTILE_VERIFY_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: body.toString(),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
       return false;
     }
 
-    return response.tokenProperties.action === expectedAction;
+    const result = (await response.json()) as {
+      success?: boolean;
+      "error-codes"?: string[];
+    };
+
+    return result.success === true;
   } catch {
     return false;
   }
-}
-
-function hasDefaultGoogleCredentials() {
-  if (getCredentialsFromEnvJson()) {
-    return true;
-  }
-
-  const configuredPath = process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim();
-
-  if (configuredPath) {
-    return existsSync(configuredPath);
-  }
-
-  const windowsAdcPath = process.env.APPDATA
-    ? join(process.env.APPDATA, "gcloud", "application_default_credentials.json")
-    : "";
-
-  if (windowsAdcPath && existsSync(windowsAdcPath)) {
-    return true;
-  }
-
-  const unixAdcPath = join(homedir(), ".config", "gcloud", "application_default_credentials.json");
-  return existsSync(unixAdcPath);
-}
-
-function warnMissingGoogleCredentialsOnce() {
-  if (warnedMissingCredentials) {
-    return;
-  }
-
-  warnedMissingCredentials = true;
-  console.warn(
-    "reCAPTCHA Enterprise credentials are missing. Configure ADC with `gcloud auth application-default login`, set GOOGLE_APPLICATION_CREDENTIALS, or set GOOGLE_APPLICATION_CREDENTIALS_JSON.",
-  );
-}
-
-function getRecaptchaClient(projectId: string) {
-  if (!recaptchaClient || recaptchaClientProjectId !== projectId) {
-    const credentialsFromEnv = getCredentialsFromEnvJson();
-
-    recaptchaClient = new RecaptchaEnterpriseServiceClient({
-      projectId: credentialsFromEnv?.project_id ?? projectId,
-      credentials: credentialsFromEnv
-        ? {
-            client_email: credentialsFromEnv.client_email,
-            private_key: credentialsFromEnv.private_key,
-          }
-        : undefined,
-    });
-    recaptchaClientProjectId = projectId;
-  }
-
-  return recaptchaClient;
-}
-
-function getCredentialsFromEnvJson() {
-  if (parsedCredentialsFromEnv !== undefined) {
-    return parsedCredentialsFromEnv;
-  }
-
-  const raw = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON?.trim();
-
-  if (!raw) {
-    parsedCredentialsFromEnv = null;
-    return parsedCredentialsFromEnv;
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as {
-      client_email?: unknown;
-      private_key?: unknown;
-      project_id?: unknown;
-    };
-
-    if (
-      typeof parsed.client_email !== "string" ||
-      typeof parsed.private_key !== "string"
-    ) {
-      parsedCredentialsFromEnv = null;
-      return parsedCredentialsFromEnv;
-    }
-
-    parsedCredentialsFromEnv = {
-      client_email: parsed.client_email,
-      private_key: parsed.private_key,
-      project_id: typeof parsed.project_id === "string" ? parsed.project_id : undefined,
-    };
-  } catch {
-    parsedCredentialsFromEnv = null;
-  }
-
-  return parsedCredentialsFromEnv;
 }
 
 function normalizeForwardedIp(remoteIp?: string) {
@@ -279,7 +175,7 @@ function normalizeForwardedIp(remoteIp?: string) {
   return remoteIp.split(",")[0]?.trim() ?? remoteIp;
 }
 
-function formatTextEmail(payload: Omit<ContactRequest, "captchaToken">) {
+function formatTextEmail(payload: Omit<ContactRequest, "turnstileToken" | "honeypot">) {
   return [
     "New inquiry from copper-forge.com",
     "",

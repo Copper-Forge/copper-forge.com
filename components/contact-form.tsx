@@ -1,7 +1,7 @@
 "use client";
 
 import Script from "next/script";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   type ContactRequest,
@@ -9,26 +9,25 @@ import {
   contactRequestSchema,
   mapZodFieldErrors,
 } from "@/lib/contact";
-import { RECAPTCHA_ACTION } from "@/lib/recaptcha";
 
 type ContactFormProps = {
   submitLabel: string;
   successMessage: string;
 };
 
-type ReCaptchaEnterpriseApi = {
-  execute: (sitekey: string, action: { action: string }) => Promise<string>;
+type TurnstileApi = {
+  reset: (container?: HTMLElement | string) => void;
 };
 
 declare global {
   interface Window {
-    grecaptcha?: {
-      enterprise?: ReCaptchaEnterpriseApi;
-    };
+    turnstile?: TurnstileApi;
   }
 }
 
-type FormValues = Omit<ContactRequest, "captchaToken">;
+type FormValues = Omit<ContactRequest, "turnstileToken"> & {
+  honeypot: string;
+};
 
 const initialValues: FormValues = {
   name: "",
@@ -37,6 +36,7 @@ const initialValues: FormValues = {
   phone: "",
   contactPreference: "email",
   message: "",
+  honeypot: "",
 };
 
 export function ContactForm({
@@ -49,9 +49,9 @@ export function ContactForm({
     "idle",
   );
   const [formMessage, setFormMessage] = useState<string>("");
-  const [isRecaptchaReady, setIsRecaptchaReady] = useState(false);
+  const [isTurnstileReady, setIsTurnstileReady] = useState(false);
 
-  const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? "";
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
   const captchaEnabled = useMemo(() => siteKey.trim().length > 0, [siteKey]);
 
   const updateField = (field: keyof FormValues, value: string) => {
@@ -72,46 +72,29 @@ export function ContactForm({
     setFieldErrors({});
   };
 
-  const requestCaptchaToken = useCallback(async () => {
-    const grecaptchaEnterprise = window.grecaptcha?.enterprise;
-
-    if (!grecaptchaEnterprise?.execute) {
-      return null;
-    }
-
-    try {
-      const token = await grecaptchaEnterprise.execute(siteKey, {
-        action: RECAPTCHA_ACTION,
-      });
-      return token?.trim() || null;
-    } catch {
-      return null;
-    }
-  }, [siteKey]);
-
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     setStatus("idle");
     setFormMessage("");
 
-    if (!captchaEnabled || !isRecaptchaReady) {
+    if (!captchaEnabled || !isTurnstileReady) {
       setStatus("error");
       setFieldErrors((current) => ({
         ...current,
-        captchaToken: "Captcha is not ready. Refresh and try again.",
+        turnstileToken: "Captcha is not ready. Refresh and try again.",
       }));
       setFormMessage("Captcha is not ready. Refresh and try again.");
       return;
     }
 
-    const captchaToken = await requestCaptchaToken();
+    const turnstileToken = extractTurnstileToken(event.currentTarget);
 
-    if (!captchaToken) {
+    if (!turnstileToken) {
       setStatus("error");
       setFieldErrors((current) => ({
         ...current,
-        captchaToken: "Verification failed. Please try again.",
+        turnstileToken: "Verification failed. Please try again.",
       }));
       setFormMessage("Verification failed. Please try again.");
       return;
@@ -120,7 +103,7 @@ export function ContactForm({
     const payload: ContactRequest = {
       ...values,
       phone: values.phone?.trim() ? values.phone.trim() : undefined,
-      captchaToken,
+      turnstileToken,
     };
 
     const parsed = contactRequestSchema.safeParse(payload);
@@ -152,9 +135,10 @@ export function ContactForm({
         } else if (result.code === "CAPTCHA_FAILED") {
           setFieldErrors((current) => ({
             ...current,
-            captchaToken: "Verification failed. Please try again.",
+            turnstileToken: "Verification failed. Please try again.",
           }));
           setFormMessage("Verification failed. Please retry your submission.");
+          resetTurnstileWidget();
         } else {
           setFormMessage(
             "We could not deliver your message right now. Please try again shortly.",
@@ -176,6 +160,7 @@ export function ContactForm({
       setStatus("success");
       setFormMessage(successMessage);
       resetForm();
+      resetTurnstileWidget();
     } catch {
       setStatus("error");
       setFormMessage(
@@ -268,40 +253,53 @@ export function ContactForm({
         {captchaEnabled ? (
           <>
             <Script
-              id="google-recaptcha-enterprise"
-              src={`https://www.google.com/recaptcha/enterprise.js?render=${encodeURIComponent(siteKey)}`}
+              id="cloudflare-turnstile"
+              src="https://challenges.cloudflare.com/turnstile/v0/api.js"
               strategy="afterInteractive"
-              onReady={() => setIsRecaptchaReady(true)}
+              onReady={() => setIsTurnstileReady(true)}
               onError={() => {
                 setFieldErrors((current) => ({
                   ...current,
-                  captchaToken: "Captcha failed to load. Refresh and try again.",
+                  turnstileToken: "Captcha failed to load. Refresh and try again.",
                 }));
                 setStatus("error");
                 setFormMessage("Captcha failed to load. Refresh and try again.");
               }}
             />
+            <div className="cf-turnstile" data-sitekey={siteKey} />
             <p className="text-sm text-steel-300">
-              Protected by reCAPTCHA Enterprise.
+              Protected by Cloudflare Turnstile.
             </p>
           </>
         ) : (
           <p className="text-sm text-copper-accent-400">
-            Captcha is not configured. Set NEXT_PUBLIC_RECAPTCHA_SITE_KEY to enable
+            Captcha is not configured. Set NEXT_PUBLIC_TURNSTILE_SITE_KEY to enable
             submissions.
           </p>
         )}
-        {fieldErrors.captchaToken ? (
+        {fieldErrors.turnstileToken ? (
           <p className="mt-2 text-sm text-copper-accent-400">
-            {fieldErrors.captchaToken}
+            {fieldErrors.turnstileToken}
           </p>
         ) : null}
+      </div>
+
+      <div className="absolute -left-[9999px] top-auto h-px w-px overflow-hidden" aria-hidden>
+        <label htmlFor="website">Website</label>
+        <input
+          id="website"
+          name="website"
+          tabIndex={-1}
+          autoComplete="off"
+          value={values.honeypot}
+          onChange={(event) => updateField("honeypot", event.target.value)}
+        />
       </div>
 
       <div className="flex items-center gap-4">
         <button
           type="submit"
-          disabled={status === "submitting" || !captchaEnabled || !isRecaptchaReady}
+          disabled={status === "submitting" || !captchaEnabled || !isTurnstileReady}
           className="inline-flex items-center justify-center rounded-full bg-copper-500 px-7 py-3 font-heading text-base uppercase tracking-wider text-charcoal-950 transition hover:bg-copper-accent-500 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {status === "submitting" ? "Sending..." : submitLabel}
@@ -398,4 +396,22 @@ function ContactPreferenceButton({
       {label}
     </button>
   );
+}
+
+function extractTurnstileToken(form: HTMLFormElement) {
+  const tokenInput = form.querySelector<HTMLInputElement>(
+    'input[name="cf-turnstile-response"]',
+  );
+  const token = tokenInput?.value?.trim();
+  return token || null;
+}
+
+function resetTurnstileWidget() {
+  const widget = document.querySelector<HTMLElement>(".cf-turnstile");
+
+  if (!widget || !window.turnstile?.reset) {
+    return;
+  }
+
+  window.turnstile.reset(widget);
 }
