@@ -18,7 +18,7 @@ export default function Home() {
               width={176}
               height={55}
               unoptimized
-              style={{ width: "auto", height: "auto" }}
+              className="h-auto w-44"
               priority
             />
           </a>
