@@ -17,6 +17,7 @@ export default function Home() {
               alt="Copper Forge"
               width={176}
               height={55}
+              unoptimized
               style={{ width: "auto", height: "auto" }}
               priority
             />
