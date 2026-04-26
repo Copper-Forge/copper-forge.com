@@ -19,6 +19,10 @@ export const runtime = "nodejs";
 let recaptchaClient: RecaptchaEnterpriseServiceClient | null = null;
 let recaptchaClientProjectId: string | null = null;
 let warnedMissingCredentials = false;
+let parsedCredentialsFromEnv:
+  | { client_email: string; private_key: string; project_id?: string }
+  | null
+  | undefined = undefined;
 
 export async function POST(request: NextRequest) {
   let json: unknown;
@@ -176,6 +180,10 @@ async function verifyReCaptcha({
 }
 
 function hasDefaultGoogleCredentials() {
+  if (getCredentialsFromEnvJson()) {
+    return true;
+  }
+
   const configuredPath = process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim();
 
   if (configuredPath) {
@@ -201,17 +209,66 @@ function warnMissingGoogleCredentialsOnce() {
 
   warnedMissingCredentials = true;
   console.warn(
-    "reCAPTCHA Enterprise credentials are missing. Configure ADC with `gcloud auth application-default login` or set GOOGLE_APPLICATION_CREDENTIALS.",
+    "reCAPTCHA Enterprise credentials are missing. Configure ADC with `gcloud auth application-default login`, set GOOGLE_APPLICATION_CREDENTIALS, or set GOOGLE_APPLICATION_CREDENTIALS_JSON.",
   );
 }
 
 function getRecaptchaClient(projectId: string) {
   if (!recaptchaClient || recaptchaClientProjectId !== projectId) {
-    recaptchaClient = new RecaptchaEnterpriseServiceClient({ projectId });
+    const credentialsFromEnv = getCredentialsFromEnvJson();
+
+    recaptchaClient = new RecaptchaEnterpriseServiceClient({
+      projectId: credentialsFromEnv?.project_id ?? projectId,
+      credentials: credentialsFromEnv
+        ? {
+            client_email: credentialsFromEnv.client_email,
+            private_key: credentialsFromEnv.private_key,
+          }
+        : undefined,
+    });
     recaptchaClientProjectId = projectId;
   }
 
   return recaptchaClient;
+}
+
+function getCredentialsFromEnvJson() {
+  if (parsedCredentialsFromEnv !== undefined) {
+    return parsedCredentialsFromEnv;
+  }
+
+  const raw = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON?.trim();
+
+  if (!raw) {
+    parsedCredentialsFromEnv = null;
+    return parsedCredentialsFromEnv;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as {
+      client_email?: unknown;
+      private_key?: unknown;
+      project_id?: unknown;
+    };
+
+    if (
+      typeof parsed.client_email !== "string" ||
+      typeof parsed.private_key !== "string"
+    ) {
+      parsedCredentialsFromEnv = null;
+      return parsedCredentialsFromEnv;
+    }
+
+    parsedCredentialsFromEnv = {
+      client_email: parsed.client_email,
+      private_key: parsed.private_key,
+      project_id: typeof parsed.project_id === "string" ? parsed.project_id : undefined,
+    };
+  } catch {
+    parsedCredentialsFromEnv = null;
+  }
+
+  return parsedCredentialsFromEnv;
 }
 
 function normalizeForwardedIp(remoteIp?: string) {

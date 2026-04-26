@@ -13,12 +13,11 @@ export default function Home() {
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4 lg:px-8">
           <a href="#top" className="flex items-center gap-3">
             <Image
-              src="/copper_forge_logo.png"
+              src="/copper_forge_logo.webp"
               alt="Copper Forge"
               width={176}
-              height={55}
+              height={56}
               unoptimized
-              className="h-auto w-44"
               priority
             />
           </a>
