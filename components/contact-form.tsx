@@ -72,6 +72,13 @@ export function ContactForm({
     setFieldErrors({});
   };
 
+  const resetAfterSuccess = () => {
+    resetForm();
+    setStatus("idle");
+    setFormMessage("");
+    resetTurnstileWidget();
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -169,6 +176,28 @@ export function ContactForm({
     }
   };
 
+  if (status === "success") {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className="rounded-2xl border border-copper-700/60 bg-copper-700/20 px-5 py-6 text-copper-100"
+      >
+        <p className="font-heading text-xs uppercase tracking-[0.22em] text-copper-accent-300">
+          Brief sent
+        </p>
+        <p className="mt-2 text-base">{formMessage || successMessage}</p>
+        <button
+          type="button"
+          onClick={resetAfterSuccess}
+          className="mt-4 inline-flex items-center justify-center rounded-full border border-copper-500 px-5 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-copper-100 transition hover:bg-copper-500/20"
+        >
+          Send another brief
+        </button>
+      </div>
+    );
+  }
+
   return (
     <form className="space-y-6" onSubmit={handleSubmit} noValidate>
       <div className="grid gap-5 sm:grid-cols-2">
@@ -181,7 +210,7 @@ export function ContactForm({
         />
         <TextField
           id="companyName"
-          label="Company Name (Optional)"
+          label="Company Name"
           value={values.companyName}
           error={fieldErrors.companyName}
           onChange={(value) => updateField("companyName", value)}
@@ -229,7 +258,7 @@ export function ContactForm({
           htmlFor="message"
           className="mb-2 block text-sm font-semibold uppercase tracking-wider text-steel-300"
         >
-          Project Idea or Question
+          Project Summary or Question
         </label>
         <textarea
           id="message"
@@ -238,48 +267,13 @@ export function ContactForm({
           value={values.message}
           onChange={(event) => updateField("message", event.target.value)}
           className="w-full rounded-2xl border border-charcoal-700 bg-charcoal-800/70 px-4 py-3 text-ivory-100 placeholder:text-steel-500 focus:border-copper-500 focus:outline-none"
-          placeholder="Share context, current constraints, and the outcome you need."
+          placeholder="Share basic information; we'll follow-up to start the conversation."
           aria-invalid={Boolean(fieldErrors.message)}
           aria-describedby={fieldErrors.message ? "message-error" : undefined}
         />
         {fieldErrors.message ? (
           <p id="message-error" className="mt-2 text-sm text-copper-accent-400">
             {fieldErrors.message}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="rounded-2xl border border-charcoal-700 bg-charcoal-900/70 p-4">
-        {captchaEnabled ? (
-          <>
-            <Script
-              id="cloudflare-turnstile"
-              src="https://challenges.cloudflare.com/turnstile/v0/api.js"
-              strategy="afterInteractive"
-              onReady={() => setIsTurnstileReady(true)}
-              onError={() => {
-                setFieldErrors((current) => ({
-                  ...current,
-                  turnstileToken: "Captcha failed to load. Refresh and try again.",
-                }));
-                setStatus("error");
-                setFormMessage("Captcha failed to load. Refresh and try again.");
-              }}
-            />
-            <div className="cf-turnstile" data-sitekey={siteKey} />
-            <p className="text-sm text-steel-300">
-              Protected by Cloudflare Turnstile.
-            </p>
-          </>
-        ) : (
-          <p className="text-sm text-copper-accent-400">
-            Captcha is not configured. Set NEXT_PUBLIC_TURNSTILE_SITE_KEY to enable
-            submissions.
-          </p>
-        )}
-        {fieldErrors.turnstileToken ? (
-          <p className="mt-2 text-sm text-copper-accent-400">
-            {fieldErrors.turnstileToken}
           </p>
         ) : null}
       </div>
@@ -304,18 +298,51 @@ export function ContactForm({
         >
           {status === "submitting" ? "Sending..." : submitLabel}
         </button>
-        <p className="text-sm text-steel-300">
-          {status === "success" ? "Submitted" : "Response time: within 1 business day"}
-        </p>
+        <p className="text-sm text-steel-300">Response time: within 1 business day</p>
       </div>
+
+      <div className="rounded-2xl border border-charcoal-700 bg-charcoal-900/70 p-4">
+        {captchaEnabled ? (
+          <>
+            <Script
+              id="cloudflare-turnstile"
+              src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+              strategy="afterInteractive"
+              onReady={() => setIsTurnstileReady(true)}
+              onError={() => {
+                setFieldErrors((current) => ({
+                  ...current,
+                  turnstileToken: "Captcha failed to load. Refresh and try again.",
+                }));
+                setStatus("error");
+                setFormMessage("Captcha failed to load. Refresh and try again.");
+              }}
+            />
+            <div className="cf-turnstile" data-sitekey={siteKey} />
+          </>
+        ) : (
+          <p className="text-sm text-copper-accent-400">
+            Captcha is not configured. Set NEXT_PUBLIC_TURNSTILE_SITE_KEY to enable
+            submissions.
+          </p>
+        )}
+        {fieldErrors.turnstileToken ? (
+          <p className="mt-2 text-sm text-copper-accent-400">
+            {fieldErrors.turnstileToken}
+          </p>
+        ) : null}
+              {captchaEnabled ? (
+        <p className="text-sm text-steel-300">Protected by Cloudflare Turnstile.</p>
+      ) : null}
+      </div>
+
+
 
       {formMessage ? (
         <p
-          className={`rounded-xl border px-4 py-3 text-sm ${
-            status === "success"
-              ? "border-copper-700/50 bg-copper-700/20 text-copper-100"
-              : "border-copper-accent-500/50 bg-copper-accent-500/10 text-copper-accent-300"
-          }`}
+          role="alert"
+          aria-live="assertive"
+          className="rounded-xl border border-copper-accent-500/50 bg-copper-accent-500/10 px-4 py-3 text-sm text-copper-accent-300"
         >
           {formMessage}
         </p>
