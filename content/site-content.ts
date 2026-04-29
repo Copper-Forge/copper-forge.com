@@ -64,6 +64,11 @@
         description:
           "Translate business goals into a clear technical direction, phased roadmap, and execution plan.",
       },
+      {
+        name: "Error Elimination",
+        description:
+          "Identify root causes, remove recurring failure points, and ship with stronger production confidence.",
+      },
     ],
   },
   process: {
