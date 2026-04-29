@@ -55,6 +55,11 @@
           "Upgrade aging systems, reduce technical friction, and improve reliability without stalling delivery.",
       },
       {
+        name: "Escape from Saas",
+        description:
+          "Stop renting software you barely fit. We build custom tools that replace recurring SaaS with a one-time build and optional support.",
+      },
+      {
         name: "Technical Strategy",
         description:
           "Translate business goals into a clear technical direction, phased roadmap, and execution plan.",
