@@ -26,7 +26,7 @@
     {
       title: "Top Tier Talent",
       description:
-        "From discovery to delivery, you work with senior experts only. Every team member brings 20+ years of experience in their field.",
+        "From discovery to delivery, you work with senior experts only. Every team member brings years of experience in their field.",
     },
     {
       title: "Always On Budget",
