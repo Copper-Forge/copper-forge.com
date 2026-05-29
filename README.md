@@ -42,10 +42,17 @@ npm run build
 ```
 
 CI runs these checks on pushes to `preview` and `main`, and on pull requests.
+CI runs these checks on pushes to `main` and on pull requests.
+
+## SDLC Exception
+
+This repository has a documented project-level SDLC exception for Netlify hosting:
+
+- [docs/sdlc-exceptions.md](./docs/sdlc-exceptions.md)
 
 ## Deployment (Netlify)
 
 - Connect repo in Netlify.
 - Configure production branch as `main`.
-- Netlify automatically creates deploy previews for `preview` branch updates and PRs.
+- Netlify automatically creates deploy previews for PRs.
 - Add required environment variables in Netlify site settings for both deploy previews and production.

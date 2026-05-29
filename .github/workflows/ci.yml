@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-      - preview
 
 jobs:
   checks:
@@ -21,6 +20,18 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Validate branch naming convention
+        if: github.event_name == 'pull_request'
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+        run: |
+          if [[ "$BRANCH_NAME" =~ ^(feature|chore|docs|hotfix)\/.+$ ]]; then
+            exit 0
+          fi
+          echo "Invalid branch name: $BRANCH_NAME"
+          echo "Allowed prefixes: feature/, chore/, docs/, hotfix/"
+          exit 1
+
       - name: Install dependencies
         run: npm ci
 
@@ -29,6 +40,17 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Test with coverage
+        run: npm run test:coverage
+
+      - name: TruffleHog secrets scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --results=verified,unknown
 
       - name: Build
         run: npm run build
