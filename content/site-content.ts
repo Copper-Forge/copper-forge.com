@@ -13,7 +13,7 @@
     eyebrow: "Technical Consulting for Ambitious Ideas",
     title: "Bring the idea. We deliver the technical reality.",
     description:
-      "Copper Forge helps founders and operators turn strong ideas into working systems. We bring experienced technical leadership, disciplined execution, and a delivery model built around outcomes.",
+      "Copper Forge helps turn ideas into working systems. We bring experienced technical leadership, accountable execution, and a delivery model built around outcomes.",
     primaryCta: { label: "Send Your Brief", href: "#contact" },
     secondaryCta: { label: "How We Work", href: "#process" },
     highlights: [
@@ -34,14 +34,9 @@
         "We do not bill hourly. Pricing is fixed to milestones and only changes when scope changes.",
     },
     {
-      title: "Consulting Like It Should Be",
-      description:
-        "If your project excites our team, we will work with you to find a practical path forward.",
-    },
-    {
       title: "Flexible Finances",
       description:
-        "For select projects we believe in, we can structure deferred compensation or equity-based agreements.",
+        "For select projects, we can structure deferred compensation and equity-based agreements.",
     },
   ],
   services: {
@@ -55,33 +50,27 @@
           "Upgrade aging systems, reduce technical friction, and improve reliability without stalling delivery.",
       },
       {
-        name: "Escape from Saas",
+        name: "Escape from SaaS",
         description:
-          "Stop renting software you barely fit. We build custom tools that replace recurring SaaS with a one-time build and optional support.",
+          "Stop renting software that doesn't quite fit. We build custom tools that replace recurring SaaS with a one-time build and optional support.",
       },
       {
         name: "Technical Strategy",
         description:
           "Translate business goals into a clear technical direction, phased roadmap, and execution plan.",
       },
-      {
-        name: "Error Elimination",
-        description:
-          "Identify root causes, remove recurring failure points, and ship with stronger production confidence.",
-      },
     ],
   },
   process: {
     title: "How We Work",
     intro:
-      "A disciplined, collaborative process that keeps scope, delivery, and expectations aligned from day one.",
+      "A collaborative engagement flow that keeps scope, timelines, and expectations aligned from day one.",
     steps: [
-      "Collaborative requirements investigation",
-      "Technical plan creation",
-      "Pricing and milestone agreement",
-      "Build and implementation",
-      "Customer acceptance",
-      "Payout by agreed milestones",
+      "Discovery: define goals, constraints, and success criteria together",
+      "Plan: map the technical approach, milestones, and delivery risks",
+      "Agreement: confirm scope, timelines, and payment terms",
+      "Delivery: implement in phases with regular check-ins",
+      "Acceptance: complete final validation and handoff",
     ],
   },
   engagement: {
@@ -91,15 +80,15 @@
       { label: "Typical team", value: "3 senior specialists" },
       {
         label: "Best fit",
-        value: "Projects aimed at delivering solutions that make the world a better place.",
+        value: "Projects with clear objectives, giving additional weight to work that creates meaningful public or social impact.",
       },
     ],
   },
   about: {
-    title: "Experienced. Creative. Disciplined.",
+    title: "Experienced. Creative. Impactful.",
     paragraphs: [
-      "Copper Forge is a technical consulting firm for teams with strong ideas and meaningful goals.",
-      "We focus on practical strategy, high-quality implementation, and accountable delivery.",
+      "Copper Forge helps teams turn important business problems into reliable software systems.",
+      "We focus on practical strategy, high-quality implementation, and outcomes that improve how people and organizations operate in the real world.",
     ],
   },
   contact: {
